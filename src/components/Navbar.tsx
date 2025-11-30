@@ -6,16 +6,17 @@ import { AuthContext } from '@/contexts/authContext';
 
 const Navbar = () => {
   const location = useLocation();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { isDark } = useTheme();
   const { isAuthenticated, logout } = useContext(AuthContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // 导航链接
+  // 导航链接 - 添加设置页面
   const navLinks = [
     { path: '/', label: '首页', icon: 'fa-home' },
     { path: '/records', label: '记录', icon: 'fa-list-alt' },
     { path: '/budget', label: '预算', icon: 'fa-chart-pie' },
     { path: '/categories', label: '分类', icon: 'fa-tags' },
+    { path: '/settings', label: '设置', icon: 'fa-cog' },
   ];
 
   // 检查当前链接是否活跃
@@ -51,17 +52,6 @@ const Navbar = () => {
                 <span>{link.label}</span>
               </Link>
             ))}
-            
-            {/* 主题切换按钮 */}
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${
-                isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
-              }`}
-              aria-label="切换主题"
-            >
-              <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
-            </button>
 
             {/* 登录/注销按钮 */}
             {isAuthenticated ? (
@@ -114,18 +104,8 @@ const Navbar = () => {
               </Link>
             ))}
             
-            {/* 移动端主题切换和登录/注销 */}
-            <div className="flex justify-between px-4 pt-2">
-              <button
-                onClick={toggleTheme}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-lg ${
-                  isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-              >
-                <i className={`fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}`}></i>
-                <span>{isDark ? '切换到亮色' : '切换到暗色'}</span>
-              </button>
-              
+            {/* 移动端登录/注销 */}
+            <div className="flex justify-end px-4 pt-2">
               {isAuthenticated ? (
                 <button
                   onClick={() => {

@@ -3,13 +3,8 @@ import { useState, useEffect } from 'react';
 type Theme = 'light' | 'dark';
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    if (savedTheme) {
-      return savedTheme;
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  // 始终使用亮色主题，不再自动检测系统偏好
+  const [theme] = useState<Theme>('light');
 
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
@@ -17,8 +12,9 @@ export function useTheme() {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // 由于默认使用亮色主题，切换主题功能可以保留但在UI中隐藏
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    // 不执行任何操作，保持亮色主题
   };
 
   return {

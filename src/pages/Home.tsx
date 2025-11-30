@@ -3,12 +3,17 @@ import StatisticsCard from '@/components/StatisticsCard';
 import Charts from '@/components/Charts';
 import TransactionForm from '@/components/TransactionForm';
 import { useTransaction } from '@/contexts/transactionContext';
+import { useBudget } from '@/contexts/budgetContext';
+import { useCategory } from '@/contexts/categoryContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/useTheme';
+import { toast } from 'sonner';
 
 const Home: React.FC = () => {
   const { isDark } = useTheme();
-  const { getRecentTransactions } = useTransaction();
+  const { transactions, getTransactionsByDateRange } = useTransaction();
+  const { budgets, calculateBudgetSpent } = useBudget();
+  const { getCategoryById } = useCategory();
   const [showAddForm, setShowAddForm] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   
@@ -26,45 +31,51 @@ const Home: React.FC = () => {
   
   // 获取最近的交易记录
   useEffect(() => {
-    // 模拟获取最近交易的函数调用
-    // 在实际应用中应从TransactionContext中获取
-    const mockRecentTransactions = [
-      {
-        id: 'tx-1',
-        amount: 85.50,
-        type: 'expense',
-        category: '餐饮',
-        categoryIcon: 'fa-utensils',
-        categoryColor: '#EF4444',
-        date: new Date(),
-        description: '午餐',
-        tags: ['日常开销', '午餐']
-      },
-      {
-        id: 'tx-2',
-        amount: 12000.00,
-        type: 'income',
-        category: '工资',
-        categoryIcon: 'fa-money-bill-wave',
-        categoryColor: '#10B981',
-        date: new Date(Date.now() - 86400000),
-        description: '月工资'
-      },
-      {
-        id: 'tx-3',
-        amount: 150.00,
-        type: 'expense',
-        category: '交通',
-        categoryIcon: 'fa-car',
-        categoryColor: '#F59E0B',
-        date: new Date(Date.now() - 172800000),
-        description: '加油费',
-        tags: ['交通', '汽车']
-      }
-    ];
+    const transactions = getTransactionsByDateRange(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date());
+    const recentTransactionsData = transactions.slice(0, 3).map(transaction => {
+      const category = getCategoryById(transaction.categoryId);
+      return {
+        id: transaction.id,
+        amount: transaction.amount,
+        type: transaction.type,
+        category: category?.name || '未知分类',
+        categoryIcon: category?.icon || 'fa-tag',
+        categoryColor: category?.color || '#6B7280',
+        date: transaction.date,
+        description: transaction.description,
+        tags: transaction.tags
+      };
+    });
     
-    setRecentTransactions(mockRecentTransactions);
-  }, []);
+    setRecentTransactions(recentTransactionsData);
+  }, [transactions, getTransactionsByDateRange, getCategoryById]);
+
+  // 通知与提醒
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem('userSettings');
+      if (!savedSettings) return;
+      const s = JSON.parse(savedSettings);
+      if (!s.notificationsEnabled) return;
+      // 预算超支提醒
+      if (s.budgetOverspendAlert) {
+        const overs = budgets.filter((b: any) => {
+          const spent = calculateBudgetSpent(b.id);
+          return b.amount > 0 && (spent / b.amount) >= 0.8;
+        });
+        if (overs.length > 0) {
+          toast.warning('有预算接近或超过80%，请及时调整');
+        }
+      }
+      // 月度报告（每月1日提示）
+      if (s.monthlyReportEnabled) {
+        const today = new Date();
+        if (today.getDate() === 1) {
+          toast.info('月度财务报告已生成，前往统计查看');
+        }
+      }
+    } catch {}
+  }, [budgets]);
   
   // 格式化日期
   const formatDate = (date: Date) => {
@@ -110,18 +121,18 @@ const Home: React.FC = () => {
                 <h3 className={`text-md font-medium mb-3 ${isDark ? 'text-gray-300' : 'text-white/90'}`}>
                   本月财务概览
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="text-center">
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-white/80'}`}>收入</p>
-                    <p className="text-xl font-bold text-green-400">¥12,850.00</p>
+                    <p className="text-lg sm:text-xl font-bold text-green-400 break-words">¥12,850.00</p>
                   </div>
-                  <div>
+                  <div className="text-center">
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-white/80'}`}>支出</p>
-                    <p className="text-xl font-bold text-red-400">¥4,230.75</p>
+                    <p className="text-lg sm:text-xl font-bold text-red-400 break-words">¥4,230.75</p>
                   </div>
-                  <div>
+                  <div className="text-center">
                     <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-white/80'}`}>结余</p>
-                    <p className="text-xl font-bold text-white">¥8,619.25</p>
+                    <p className="text-lg sm:text-xl font-bold text-white break-words">¥8,619.25</p>
                   </div>
                 </div>
               </div>
@@ -267,60 +278,49 @@ const Home: React.FC = () => {
         </div>
         
         <div className="space-y-4">
-          {/* 预算项目示例 */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center">
-                <i className="fa-solid fa-utensils text-red-500 mr-2"></i>
-                <span>餐饮</span>
+          {/* 真实预算数据 */}
+          {budgets.slice(0, 3).map((budget) => {
+            const category = getCategoryById(budget.categoryId);
+            const spent = calculateBudgetSpent(budget.id);
+            const progress = Math.min((spent / budget.amount) * 100, 100);
+            const getProgressColor = () => {
+              if (progress < 70) return 'bg-green-500';
+              if (progress < 90) return 'bg-yellow-500';
+              return 'bg-red-500';
+            };
+            
+            return (
+              <div key={budget.id}>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center">
+                    {category && (
+                      <>
+                        <i className={`fa-solid ${category.icon} mr-2`} style={{ color: category.color }}></i>
+                        <span>{category.name}</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-sm">¥{spent.toFixed(2)} / ¥{budget.amount.toFixed(2)} ({progress.toFixed(1)}%)</span>
+                </div>
+                <div className={`h-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
+                  <motion.div
+                    className={`h-full rounded-full ${getProgressColor()}`}
+                    initial={{ width: '0%' }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
               </div>
-              <span className="text-sm">¥1,250 / ¥2,000 (62.5%)</span>
-            </div>
-            <div className={`h-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
-              <motion.div
-                className="h-full rounded-full bg-red-500"
-                initial={{ width: '0%' }}
-                animate={{ width: '62.5%' }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
-          </div>
+            );
+          })}
           
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center">
-                <i className="fa-solid fa-car text-amber-500 mr-2"></i>
-                <span>交通</span>
-              </div>
-              <span className="text-sm">¥650 / ¥1,000 (65%)</span>
+          {budgets.length === 0 && (
+            <div className="text-center py-4">
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                还没有设置预算，前往预算页面设置
+              </p>
             </div>
-            <div className={`h-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
-              <motion.div
-                className="h-full rounded-full bg-amber-500"
-                initial={{ width: '0%' }}
-                animate={{ width: '65%' }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center">
-                <i className="fa-solid fa-shopping-cart text-purple-500 mr-2"></i>
-                <span>购物</span>
-              </div>
-              <span className="text-sm">¥890 / ¥1,500 (59.3%)</span>
-            </div>
-            <div className={`h-2 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'} overflow-hidden`}>
-              <motion.div
-                className="h-full rounded-full bg-purple-500"
-                initial={{ width: '0%' }}
-                animate={{ width: '59.3%' }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
-          </div>
+          )}
         </div>
       </motion.div>
       

@@ -27,11 +27,37 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
   const { isDark } = useTheme();
+  const [showLegend, setShowLegend] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
+  const [colorScheme, setColorScheme] = useState<'default' | 'pastel' | 'vibrant' | 'monochrome'>('default');
   
-  // 自定义颜色
-  const INCOME_COLOR = '#10B981';
-  const EXPENSE_COLOR = '#EF4444';
-  const BALANCE_COLOR = '#3B82F6';
+  // 配色方案
+  const getColors = () => {
+    switch (colorScheme) {
+      case 'pastel':
+        return { INCOME_COLOR: '#74c69d', EXPENSE_COLOR: '#f4978e', BALANCE_COLOR: '#6c8cff' };
+      case 'vibrant':
+        return { INCOME_COLOR: '#00c853', EXPENSE_COLOR: '#ff1744', BALANCE_COLOR: '#2979ff' };
+      case 'monochrome':
+        return { INCOME_COLOR: '#5b8def', EXPENSE_COLOR: '#3a66d6', BALANCE_COLOR: '#2a4fb3' };
+      default:
+        return { INCOME_COLOR: '#10B981', EXPENSE_COLOR: '#EF4444', BALANCE_COLOR: '#3B82F6' };
+    }
+  };
+  const { INCOME_COLOR, EXPENSE_COLOR, BALANCE_COLOR } = getColors();
+
+  // 加载设置
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('userSettings');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (s.showChartLegend !== undefined) setShowLegend(!!s.showChartLegend);
+        if (s.showChartLabels !== undefined) setShowLabels(!!s.showChartLabels);
+        if (s.chartColorScheme) setColorScheme(s.chartColorScheme);
+      }
+    } catch {}
+  }, []);
   
   // 生成图表数据
   useEffect(() => {
@@ -274,11 +300,12 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
               data={data}
               cx="50%"
               cy="50%"
-              labelLine={true}
               outerRadius={120}
               fill="#8884d8"
               dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              minAngle={4}
+              labelLine={false}
+              label={showLabels && (typeof window === 'undefined' ? true : window.innerWidth >= 768)}
               animationDuration={1000}
             >
               {data.map((entry, index) => (
@@ -286,7 +313,7 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
               ))}
             </Pie>
             <Tooltip formatter={(value) => [formatAmount(value as number), '金额']} content={<CustomTooltip />} />
-            <Legend verticalAlign="bottom" height={36} />
+            {showLegend && <Legend verticalAlign="bottom" height={36} />}
           </PieChart>
         </ResponsiveContainer>
       );
@@ -302,7 +329,7 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
               <XAxis dataKey="date" stroke={isDark ? "#aaa" : "#666"} />
               <YAxis stroke={isDark ? "#aaa" : "#666"} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              {showLegend && <Legend />}
               <Bar dataKey="income" fill={INCOME_COLOR} name="收入" radius={[4, 4, 0, 0]} barSize={30} />
               <Bar dataKey="expense" fill={EXPENSE_COLOR} name="支出" radius={[4, 4, 0, 0]} barSize={30} />
             </BarChart>
@@ -319,7 +346,7 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
               <XAxis dataKey="date" stroke={isDark ? "#aaa" : "#666"} />
               <YAxis stroke={isDark ? "#aaa" : "#666"} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              {showLegend && <Legend />}
               <Line 
                 type="monotone" 
                 dataKey="income" 
@@ -352,7 +379,7 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
               <XAxis dataKey="date" stroke={isDark ? "#aaa" : "#666"} />
               <YAxis stroke={isDark ? "#aaa" : "#666"} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              {showLegend && <Legend />}
               <Area 
                 type="monotone" 
                 dataKey="income" 
@@ -386,7 +413,7 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
             <XAxis dataKey="date" stroke={isDark ? "#aaa" : "#666"} />
             <YAxis stroke={isDark ? "#aaa" : "#666"} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            {showLegend && <Legend />}
             <Line 
               type="monotone" 
               dataKey="balance" 
@@ -435,11 +462,11 @@ const Charts: React.FC<ChartsProps> = ({ type, title }) => {
       <div className="p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <h3 className="text-xl font-bold mb-3 md:mb-0 flex items-center">
-            {type === 'expenseByCategory' && <i className="fa-solid fa-pie-chart text-red-500 mr-2"></i>}
-            {type === 'incomeByCategory' && <i className="fa-solid fa-pie-chart text-green-500 mr-2"></i>}
+            {type === 'expenseByCategory' && <i className="fa-solid fa-chart-pie text-red-500 mr-2"></i>}
+            {type === 'incomeByCategory' && <i className="fa-solid fa-chart-pie text-green-500 mr-2"></i>}
             {type === 'trend' && <i className="fa-solid fa-chart-line text-blue-500 mr-2"></i>}
             {type === 'balanceTrend' && <i className="fa-solid fa-chart-area text-indigo-500 mr-2"></i>}
-            {type === 'categoryRadar' && <i className="fa-solid fa-chart-radar text-purple-500 mr-2"></i>}
+            {type === 'categoryRadar' && <i className="fa-solid fa-bullseye text-purple-500 mr-2"></i>}
             {title}
           </h3>
           

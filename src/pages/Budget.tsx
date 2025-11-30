@@ -8,7 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 
 const Budget: React.FC = () => {
   const { isDark } = useTheme();
-  const { budgets } = useBudget();
+  const { budgets, addBudget } = useBudget();
   const { getCategoriesByType, getCategoryById } = useCategory();
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
@@ -26,12 +26,10 @@ const Budget: React.FC = () => {
     }
   }, [getCategoriesByType, selectedCategoryId]);
   
-  // 重新加载数据
   const handleUpdate = () => {
     setRefetch(prev => prev + 1);
   };
   
-  // 处理添加预算
   const handleAddBudget = () => {
     const amount = parseFloat(budgetAmount);
     
@@ -53,21 +51,12 @@ const Budget: React.FC = () => {
       return;
     }
     
-    // 这里应该调用budgetContext中的addBudget方法
-    // 但为了简化，我们使用localStorage直接添加
-    const newBudget = {
-      id: `budget-${Date.now()}`,
+    addBudget({
       categoryId: selectedCategoryId,
       amount,
-      spent: 0,
       period: budgetPeriod,
-      startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
-    };
-    
-    const currentBudgets = JSON.parse(localStorage.getItem('budgets') || '[]');
-    const updatedBudgets = [...currentBudgets, newBudget];
-    localStorage.setItem('budgets', JSON.stringify(updatedBudgets));
-    
+      startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    });
     toast.success('预算已添加');
     setShowAddForm(false);
     setBudgetAmount('');

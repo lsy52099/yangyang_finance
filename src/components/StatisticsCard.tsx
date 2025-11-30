@@ -14,7 +14,7 @@ interface StatisticsCardProps {
 }
 
 const StatisticsCard: React.FC<StatisticsCardProps> = ({ title, icon, type, color }) => {
-  const { getTransactionsByDateRange, getTotalIncome, getTotalExpense, getBalance } = useTransaction();
+  const { transactions, getTransactionsByDateRange, getTotalIncome, getTotalExpense, getBalance } = useTransaction();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('month');
   const [amount, setAmount] = useState<number>(0);
   const [formattedAmount, setFormattedAmount] = useState<string>('¥0.00');
@@ -73,7 +73,7 @@ const StatisticsCard: React.FC<StatisticsCardProps> = ({ title, icon, type, colo
     }).format(calculatedAmount);
     
     setFormattedAmount(formatted);
-  }, [timePeriod, getTransactionsByDateRange, getTotalIncome, getTotalExpense, getBalance, type]);
+  }, [transactions, timePeriod, getTransactionsByDateRange, getTotalIncome, getTotalExpense, getBalance, type]);
   
   // 时间段选项
   const periodOptions: { value: TimePeriod; label: string }[] = [

@@ -7,6 +7,8 @@ interface TransactionContextType {
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   updateTransaction: (id: string, transaction: Partial<Transaction>) => void;
   deleteTransaction: (id: string) => void;
+  clearTransactions: () => void;
+  seedMockTransactions: () => void;
   getTransactionsByDateRange: (startDate: Date, endDate: Date) => Transaction[];
   getTransactionsByCategory: (categoryId: string) => Transaction[];
   getTotalIncome: (transactions?: Transaction[]) => number;
@@ -18,6 +20,12 @@ const TransactionContext = createContext<TransactionContextType | undefined>(und
 
 export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const getSettings = () => {
+    try {
+      const raw = localStorage.getItem('userSettings');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  };
 
   // 从localStorage加载数据或初始化模拟数据
   useEffect(() => {
@@ -28,10 +36,33 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
           ...tx,
           date: new Date(tx.date),
         }));
-        setTransactions(parsedTransactions);
+        if (Array.isArray(parsedTransactions) && parsedTransactions.length === 0) {
+          const cleared = localStorage.getItem('userCleared_transactions') === 'true';
+          if (cleared) {
+            setTransactions([]);
+          } else {
+            setTransactions(generateMockTransactions());
+          }
+        } else {
+          setTransactions(parsedTransactions);
+        }
       } catch (error) {
-        console.error('Failed to parse saved transactions:', error);
-        setTransactions(generateMockTransactions());
+        try {
+          const decoded = atob(savedTransactions);
+          const parsedTransactions = JSON.parse(decoded).map((tx: any) => ({
+            ...tx,
+            date: new Date(tx.date),
+          }));
+          if (Array.isArray(parsedTransactions) && parsedTransactions.length === 0) {
+            const cleared = localStorage.getItem('userCleared_transactions') === 'true';
+            setTransactions(cleared ? [] : generateMockTransactions());
+          } else {
+            setTransactions(parsedTransactions);
+          }
+        } catch (err2) {
+          console.error('Failed to parse saved transactions:', error);
+          setTransactions(generateMockTransactions());
+        }
       }
     } else {
       setTransactions(generateMockTransactions());
@@ -40,9 +71,12 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
   // 保存数据到localStorage
   useEffect(() => {
-    if (transactions.length > 0) {
-      localStorage.setItem('transactions', JSON.stringify(transactions));
-    }
+    const settings = getSettings();
+    const encrypt = !!settings.dataEncryptionEnabled;
+    const payload = JSON.stringify(transactions);
+    try {
+      localStorage.setItem('transactions', encrypt ? btoa(payload) : payload);
+    } catch {}
   }, [transactions]);
 
   // 添加交易
@@ -51,13 +85,22 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
       ...transaction,
       id: `tx-${Date.now()}`,
     };
-    setTransactions(prev => [newTransaction, ...prev]);
+    setTransactions(prev => {
+      const next = [newTransaction, ...prev];
+      try {
+        const settings = getSettings();
+        const encrypt = !!settings.dataEncryptionEnabled;
+        const payload = JSON.stringify(next);
+        localStorage.setItem('transactions', encrypt ? btoa(payload) : payload);
+      } catch {}
+      return next;
+    });
   };
 
   // 更新交易
   const updateTransaction = (id: string, updatedTransaction: Partial<Transaction>) => {
-    setTransactions(prev => 
-      prev.map(tx => 
+    setTransactions(prev => {
+      const next = prev.map(tx => 
         tx.id === id 
           ? { 
               ...tx, 
@@ -65,13 +108,40 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
               date: updatedTransaction.date ? new Date(updatedTransaction.date) : tx.date
             } 
           : tx
-      )
-    );
+      );
+      try {
+        const settings = getSettings();
+        const encrypt = !!settings.dataEncryptionEnabled;
+        const payload = JSON.stringify(next);
+        localStorage.setItem('transactions', encrypt ? btoa(payload) : payload);
+      } catch {}
+      return next;
+    });
   };
 
   // 删除交易
   const deleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(tx => tx.id !== id));
+  };
+
+  // 清空所有交易
+  const clearTransactions = () => {
+    setTransactions([]);
+    try {
+      localStorage.setItem('transactions', JSON.stringify([]));
+    } catch {}
+  };
+
+  // 载入示例交易数据（用户可在设置页触发）
+  const seedMockTransactions = () => {
+    const mocks = generateMockTransactions();
+    setTransactions(mocks);
+    try {
+      const settings = getSettings();
+      const encrypt = !!settings.dataEncryptionEnabled;
+      const payload = JSON.stringify(mocks);
+      localStorage.setItem('transactions', encrypt ? btoa(payload) : payload);
+    } catch {}
   };
 
   // 按日期范围获取交易
@@ -111,6 +181,8 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    clearTransactions,
+    seedMockTransactions,
     getTransactionsByDateRange,
     getTransactionsByCategory,
     getTotalIncome,

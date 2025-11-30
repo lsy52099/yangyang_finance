@@ -26,6 +26,21 @@ const TransactionList: React.FC<TransactionListProps> = () => {
   const [filteredTransactions, setFilteredTransactions] = useState(transactions);
   const { isDark } = useTheme();
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  
+  // 从本地存储加载视图模式设置
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('userSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.transactionView) {
+          setViewMode(settings.transactionView);
+        }
+      } catch (error) {
+        console.error('Failed to load view mode setting:', error);
+      }
+    }
+  }, []);
 
   // 获取所有分类用于筛选
   const { getCategoriesByType } = useCategory();

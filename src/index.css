@@ -89,3 +89,27 @@
 .dark .card-hover:hover {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
 }
+
+/* 移动端优化样式 */
+@media (max-width: 768px) {
+  /* 确保内容区域有足够的内边距，避免被导航栏遮挡 */
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
+  /* 调整输入框大小以适应移动设备 */
+  input, select, textarea, button {
+    touch-action: manipulation;
+  }
+  
+  /* 优化模态框显示 */
+  .fixed.inset-0 {
+    padding: 12px;
+  }
+  
+  /* 优化按钮大小，更适合触摸 */
+  button {
+    min-height: 44px;
+  }
+}

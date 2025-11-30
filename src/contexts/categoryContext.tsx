@@ -9,22 +9,46 @@ interface CategoryContextType {
   deleteCategory: (id: string) => boolean;
   getCategoriesByType: (type: 'income' | 'expense') => Category[];
   getCategoryById: (id: string) => Category | undefined;
+  resetCategories: () => void;
 }
 
 const CategoryContext = createContext<CategoryContextType | undefined>(undefined);
 
 export const CategoryProvider = ({ children }: { children: ReactNode }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const getSettings = () => {
+    try {
+      const raw = localStorage.getItem('userSettings');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  };
 
   // 从localStorage加载数据或初始化模拟数据
   useEffect(() => {
     const savedCategories = localStorage.getItem('categories');
     if (savedCategories) {
       try {
-        setCategories(JSON.parse(savedCategories));
+        const parsed = JSON.parse(savedCategories);
+        if (Array.isArray(parsed) && parsed.length === 0) {
+          const cleared = localStorage.getItem('userCleared_categories') === 'true';
+          setCategories(cleared ? [] : mockCategories);
+        } else {
+          setCategories(parsed);
+        }
       } catch (error) {
-        console.error('Failed to parse saved categories:', error);
-        setCategories(mockCategories);
+        try {
+          const decoded = atob(savedCategories);
+          const parsed = JSON.parse(decoded);
+          if (Array.isArray(parsed) && parsed.length === 0) {
+            const cleared = localStorage.getItem('userCleared_categories') === 'true';
+            setCategories(cleared ? [] : mockCategories);
+          } else {
+            setCategories(parsed);
+          }
+        } catch (err2) {
+          console.error('Failed to parse saved categories:', error);
+          setCategories(mockCategories);
+        }
       }
     } else {
       setCategories(mockCategories);
@@ -33,9 +57,12 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
 
   // 保存数据到localStorage
   useEffect(() => {
-    if (categories.length > 0) {
-      localStorage.setItem('categories', JSON.stringify(categories));
-    }
+    const settings = getSettings();
+    const encrypt = !!settings.dataEncryptionEnabled;
+    const payload = JSON.stringify(categories);
+    try {
+      localStorage.setItem('categories', encrypt ? btoa(payload) : payload);
+    } catch {}
   }, [categories]);
 
   // 添加分类
@@ -76,6 +103,17 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     return categories.find(cat => cat.id === id);
   };
 
+  // 重置分类到默认预设
+  const resetCategories = () => {
+    setCategories(mockCategories);
+    try {
+      const settings = getSettings();
+      const encrypt = !!settings.dataEncryptionEnabled;
+      const payload = JSON.stringify(mockCategories);
+      localStorage.setItem('categories', encrypt ? btoa(payload) : payload);
+    } catch {}
+  };
+
   const value: CategoryContextType = {
     categories,
     addCategory,
@@ -83,6 +121,7 @@ export const CategoryProvider = ({ children }: { children: ReactNode }) => {
     deleteCategory,
     getCategoriesByType,
     getCategoryById,
+    resetCategories,
   };
 
   return (

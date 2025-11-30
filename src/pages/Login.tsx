@@ -13,8 +13,9 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   
-  // 模拟登录功能
+  // 登录/注册
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -26,20 +27,39 @@ const Login: React.FC = () => {
     
     setIsLoading(true);
     
-    // 模拟API请求延迟
     setTimeout(() => {
-      // 模拟登录成功（这里使用简单的判断，实际应用中应该调用真实的登录API）
-      if (username === 'admin' && password === 'password') {
-        setIsAuthenticated(true);
-        localStorage.setItem('isAuthenticated', 'true');
-        toast.success('登录成功，欢迎回来！');
-        navigate('/');
-      } else {
-        toast.error('用户名或密码错误，请重试');
+      try {
+        const usersRaw = localStorage.getItem('users');
+        const users = usersRaw ? JSON.parse(usersRaw) : [];
+        if (isRegisterMode) {
+          const exists = users.some((u: any) => u.username === username);
+          if (exists) {
+            toast.error('用户名已存在，请更换');
+          } else {
+            const newUser = { username, password }; // 简化存储
+            localStorage.setItem('users', JSON.stringify([...users, newUser]));
+            toast.success('注册成功，请登录');
+            setIsRegisterMode(false);
+          }
+        } else {
+          const found = users.find((u: any) => u.username === username && u.password === password);
+          if (found || (username === 'admin' && password === 'password')) {
+            setIsAuthenticated(true);
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('currentUser', username);
+            toast.success('登录成功，欢迎回来！');
+            navigate('/');
+          } else {
+            toast.error('用户名或密码错误，请重试');
+          }
+        }
+      } catch (err) {
+        toast.error('操作失败，请重试');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
-    }, 1000);
+    }, 600);
   };
   
   // 自动填充测试账号
@@ -194,7 +214,7 @@ const Login: React.FC = () => {
               </div>
             </div>
             
-            {/* 登录按钮 */}
+            {/* 提交按钮 */}
             <motion.button
               type="submit"
               className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg"
@@ -205,18 +225,32 @@ const Login: React.FC = () => {
               {isLoading ? (
                 <i className="fa-solid fa-circle-notch fa-spin"></i>
               ) : (
-                <i className="fa-solid fa-right-to-bracket"></i>
+                <i className={isRegisterMode ? 'fa-solid fa-user-plus' : 'fa-solid fa-right-to-bracket'}></i>
               )}
               <span className="font-medium">
-                {isLoading ? '登录中...' : '登录'}
+                {isLoading ? (isRegisterMode ? '注册中...' : '登录中...') : (isRegisterMode ? '注册' : '登录')}
               </span>
             </motion.button>
             
             {/* 快速登录提示 */}
             <motion.button
               type="button"
-              onClick={fillTestCredentials}
+              onClick={() => setIsRegisterMode(!isRegisterMode)}
               className={`mt-4 w-full py-2.5 rounded-lg ${
+                isDark
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } transition-all duration-200 text-sm`}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <i className={isRegisterMode ? 'fa-solid fa-right-to-bracket mr-2' : 'fa-solid fa-user-plus mr-2'}></i>
+              {isRegisterMode ? '切换到登录' : '切换到注册'}
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={fillTestCredentials}
+              className={`mt-2 w-full py-2.5 rounded-lg ${
                 isDark
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

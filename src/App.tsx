@@ -7,7 +7,8 @@ import Categories from "@/pages/Categories";
 import Navbar from "@/components/Navbar";
 import About from "@/pages/About";
 import Privacy from "@/pages/Privacy";
-import Contact from "@/pages/Contact";
+  import Contact from "@/pages/Contact";
+  import Settings from "@/pages/Settings";
 import Footer from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { AuthContext } from '@/contexts/authContext';
@@ -73,6 +74,11 @@ export default function App() {
                   <Route path="/categories" element={
                     <ProtectedRoute>
                       <Categories />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <Settings />
                     </ProtectedRoute>
                   } />
                   <Route path="/about" element={

@@ -27,6 +27,7 @@ const TransactionForm = ({ onClose, editingTransaction }: TransactionFormProps) 
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState<string>('');
   const { isDark } = useTheme();
+  const [quickAmounts, setQuickAmounts] = useState<number[]>([50, 100, 200, 500, 1000]);
 
   // 当类型改变时，重置分类
   const handleTypeChange = (newType: 'income' | 'expense') => {
@@ -63,14 +64,20 @@ const TransactionForm = ({ onClose, editingTransaction }: TransactionFormProps) 
       return;
     }
     
+    const now = new Date();
+    const [y, m, d] = date.split('-').map(Number);
+    const preciseDate = new Date(now);
+    preciseDate.setFullYear(y);
+    preciseDate.setMonth(m - 1);
+    preciseDate.setDate(d);
     const transactionData = {
       amount: Number(amount),
       type,
       categoryId,
-      date: new Date(date),
+      date: preciseDate,
       description: description.trim(),
-      location: location.trim(), // 可选的位置信息
-      tags: tags, // 标签信息
+      location: location.trim(),
+      tags: tags,
     };
     
     if (editingTransaction) {
@@ -107,8 +114,39 @@ const TransactionForm = ({ onClose, editingTransaction }: TransactionFormProps) 
     return category ? category.name : '';
   };
 
-  // 预设的快速金额
-  const quickAmounts = [50, 100, 200, 500, 1000];
+  // 从设置中加载快速金额
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('userSettings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.quickAmounts) {
+          setQuickAmounts(settings.quickAmounts.map(Number));
+        }
+      } catch (error) {
+        console.error('Failed to load quick amounts:', error);
+      }
+    }
+  }, []);
+  
+  // 从设置中加载默认交易类型
+  useEffect(() => {
+    if (!editingTransaction) {
+      const savedSettings = localStorage.getItem('userSettings');
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          if (settings.defaultTransactionType) {
+            setType(settings.defaultTransactionType);
+          }
+        } catch (error) {
+          console.error('Failed to load default transaction type:', error);
+        }
+      }
+    }
+  }, [editingTransaction]);
+  
+  // 预设的快速金额已通过useState定义
 
   return (
     <motion.div 
@@ -135,7 +173,8 @@ const TransactionForm = ({ onClose, editingTransaction }: TransactionFormProps) 
         </h2>
       </div>
       
-      <div className="p-6">
+       {/* 确保表单可以滚动，特别是在移动设备上 */}
+      <div className="overflow-y-auto max-h-[calc(100vh-200px)] p-6">
         <form onSubmit={handleSubmit}>
           {/* 交易类型选择 */}
           <div className="mb-6">
